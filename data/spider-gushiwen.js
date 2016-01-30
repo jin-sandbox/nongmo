@@ -84,5 +84,5 @@ authorSpider.route('so.gushiwen.org', '/type.aspx\\?p=*', function (html, $) {
 	fs.writeFile('./author.json',JSON.stringify(Object.keys(authorMap)),function(err){err && console.error(err)})
 	mongoCache.close();
 })
-.get('http://so.gushiwen.org/view_49386.aspx')
-//.get('http://so.gushiwen.org/type.aspx?p=1')
+//.get('http://so.gushiwen.org/view_49436.aspx')
+.get('http://so.gushiwen.org/type.aspx?p=1')
