@@ -2,7 +2,7 @@ var spider = require('./spider');
 var fs = require('fs');
 
 // Use connect method to connect to the Server 
-var mongoCache = new spider.MongoCache()
+var mongoCache = new spider.MongoCache('')
 var authorSpider = spider({cache:mongoCache});
 var counter = 0;
 var authorExp = /作者：([\s\S]+)?(?:&nbsp;|\xa0){2}([\d\.]+)\((\d+)人评分\)/;
@@ -11,7 +11,8 @@ var authorMap = {};
 var start = +new Date;
 var previousDate = +new Date();
 var authorCount = 0;
-authorSpider.route('so.gushiwen.org', '/type.aspx\\?p=*', function (html, $) {
+//http://list.jd.com/list.html?cat=
+authorSpider.route('list.jd.com', '/list.html?cat=*', function (html, $) {
 	//if (this.fromCache) return;
 	//console.log("Fetching page: %s, for the %s th time", this.spider.currentUrl, ++counter);
 	// spider all genres
@@ -48,10 +49,7 @@ authorSpider.route('so.gushiwen.org', '/type.aspx\\?p=*', function (html, $) {
 	}
 }).route('so.gushiwen.org','/search.aspx\\?type=author&page=*&value=*',function(html,$){
 	$('div.pages a').spider();
-	var c = $('.sons a').spider();
-	if(c ==0){
-		console.log('无作品：'+this[0])
-	}
+	$('.sons a').spider()
 }).route('so.gushiwen.org','/view_*.aspx',function(html,$){
 	//$('div.pages a').spider();
 	//console.log(html)

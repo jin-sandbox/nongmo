@@ -206,16 +206,22 @@ Spider.prototype.route = function (hosts, pattern, cb) {
 					fn(i,list[i]);
 				}
 			}
-			list.spider = function(){
+			list.spider = function(replace){
+				var i = 0;
 				list.each(function(i,p){
 					var href= p.getAttribute('href');
 					if(href){
 						if (!/^https?:/.test(href)) {
 							href = urlResolve(url, href);
 						}
+						if(replace){
+							url = replace(url)
+						}
+						i++;
 						spider.get(href,url);
 					}
 				})
+				return i;
 			}
 			return list;
 		}
