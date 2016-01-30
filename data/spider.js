@@ -1,4 +1,5 @@
 var request = require('request')
+	, http = require('http')
 	, fs = require('fs')
 	, xmldom = require('xmldom')
 	, urlParse = require('url').parse
@@ -67,6 +68,7 @@ Spider.prototype.get = function (url, referer) {
 			return;
 		} 
 		var u = urlParse(url);
+		//console.log(u,url)
 		var path = u.href.slice(u.href.indexOf(u.host)+u.host.length);
 		if (!spider.routers[u.host]) {
 			spider.emit('log', debug, 'No routes for host: '+u.host+'. skipping.')
@@ -135,7 +137,10 @@ function doRequest(spider,url,headers,referer){
 	}
 	runUrls.push(url)
 	console.log('send request:',url,';wait:',waitUrls.length)
-	request.get({url:url, headers:headers, pool:spider.pool}, function (e, resp, body) {
+	
+	
+	
+	doGet(spider,url,headers,function (e, resp, body) {
 		var i = runUrls.indexOf(url);
 		runUrls.splice(i,1)
 		doRequest(spider);
@@ -154,10 +159,10 @@ function doRequest(spider,url,headers,referer){
 			spider.emit('log', debug, 'Request did not return 200. '+url);
 			spider.completeTask();
 			return;
-		} else if (!resp.headers['content-type'] || resp.headers['content-type'].indexOf('html') === -1) {
-			spider.emit('log', debug, 'Content-Type does not match. '+url);
-			spider.completeTask();
-			return;
+		//} else if (!resp.headers['content-type'] || resp.headers['content-type'].indexOf('html') === -1) {
+		//	spider.emit('log', debug, 'Content-Type does not match. '+url);
+		//	spider.completeTask();
+		//	return;
 		}
 		if (resp.headers['set-cookie']) {
 			try { spider.cookie.setCookies(resp.headers['set-cookie']) }
@@ -167,6 +172,40 @@ function doRequest(spider,url,headers,referer){
 		handlerSpiderResponse(spider, resp.headers, body,url, referer, false);
 		spider.completeTask();
 	})
+}
+function doGet(spider,url,headers,callback){
+	if(/.(jpg|mp3)$/.test(url)){
+		var buf;
+		function appendData(chunk) {
+			//console.log(url,typeof chunk)
+			if(buf){
+				buf = Buffer.concat([buf,chunk])
+			}else{
+				buf = chunk;//new Buffer();
+			}
+		}
+		var m =url.match( /^(https?):\/\/([^\/:]+)(:\d+)?(\/.*)$/)
+		var options = {
+			hostname: m[2],
+			port: m[3]||80,
+			path: m[4],
+			method: 'GET',
+			headers: headers
+		};
+		(m[1] == 'http'?http:https).get(options, function(res) {
+			//res.setEncoding('utf8');
+			res.on('data', appendData);
+			res.on('end', function(chunk) {
+				chunk && appendData(chunk);
+				callback(null,res,buf)
+			})
+		}).on('error', function(e){
+			callback(e,res)
+		});
+	}else{
+		request.get({url:url, headers:headers, pool:spider.pool}, callback);
+	}
+	
 }
 Spider.prototype.route = function (hosts, pattern, cb) {
 	var spider = this;
@@ -199,8 +238,9 @@ Spider.prototype.route = function (hosts, pattern, cb) {
 			return selector;
 		}
 		
-		function $(selector){
-			var list = initSelector().select(selector) ||[];
+		function $(selector,basenode){
+			//console.log('selector:',selector,'$$$',basenode)
+			var list = initSelector().select(selector,basenode) ||[];
 			list.each = function(fn){
 				for(var i=0;i<list.length;i++){
 					fn(i,list[i]);
@@ -209,8 +249,8 @@ Spider.prototype.route = function (hosts, pattern, cb) {
 			list.spider = function(replace){
 				var c = 0;
 				list.each(function(i,p){
-					var href= p.getAttribute('href');
-					if(href){
+					var href= p.getAttribute('href') || p.getAttribute('src');
+					if(href && !/^\s*javascript\:/.test(href)){
 						if (!/^https?:/.test(href)) {
 							href = urlResolve(url, href);
 						}
@@ -283,7 +323,7 @@ Spider.prototype.completeTask = function(){
 };
 
 function MongoCache(dburl){
-	this.dburl = dburl || 'mongodb://localhost:27017/wwnm-cache';
+	this.dburl = dburl || 'mongodb://localhost:27017/http-cache';
 }
 
 MongoCache.prototype = {

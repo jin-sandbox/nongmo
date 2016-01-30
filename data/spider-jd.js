@@ -2,63 +2,37 @@ var spider = require('./spider');
 var fs = require('fs');
 
 // Use connect method to connect to the Server 
-var mongoCache = new spider.MongoCache('')
-var authorSpider = spider({cache:mongoCache});
+var mongoCache = new spider.MongoCache('mongodb://localhost:27017/jd-cache')
+var jdSpider = spider({cache:mongoCache});
 var counter = 0;
-var authorExp = /作者：([\s\S]+)?(?:&nbsp;|\xa0){2}([\d\.]+)\((\d+)人评分\)/;
-var authorMap = {};
-//http://so.gushiwen.org/type.aspx?p=2
-var start = +new Date;
-var previousDate = +new Date();
-var authorCount = 0;
-//http://list.jd.com/list.html?cat=
-authorSpider.route('list.jd.com', '/list.html?cat=*', function (html, $) {
-	//if (this.fromCache) return;
-	//console.log("Fetching page: %s, for the %s th time", this.spider.currentUrl, ++counter);
-	// spider all genres
-	var newAuthor = 0;
-	$('div.sons>p:nth-of-type(2)').each(function(i,p){
-		var authorLine = p.innerHTML;
-		var match = authorExp.exec(authorLine);
-		if(match){
-			var n = match[1];
-			var sorce = match[2] +'#'+ match[3];
-			if(n in authorMap){
-				//if(authorMap[n] .indexOf(sorce) == -1){
-				//console.warn('author: rate changed:',n,sorce,authorMap[n])
-				//}
-			}else{
-				newAuthor ++;
-				authorCount++;
-				authorMap[n] = sorce;
-				authorSpider.get('http://so.gushiwen.org/search.aspx?type=author&page=1&value='+encodeURIComponent(n))
-			}
-			//console.log(n,sorce);
-		}else{
-			console.error('no valid author:',authorLine);
-		}
-	})
-	
-	//newAuthor && fs.writeFile('./author.json',JSON.stringify(authorMap),function(err){err && console.error(err)})
-	// spider all numbered pages of letters per genre
-	$('div.pages a').spider();
-	var newDate = new Date();
-	if(newDate - previousDate > 1000*60){
-		console.log('author count:',authorCount, 'time passed:',(newDate - previousDate)/1000/60+'minute')
-		previousDate =+newDate
+function toInnerText(el){
+	if(el instanceof Array){
+		return el.map(toInnerText).join('\n')
 	}
-}).route('so.gushiwen.org','/search.aspx\\?type=author&page=*&value=*',function(html,$){
-	$('div.pages a').spider();
-	$('.sons a').spider()
-}).route('so.gushiwen.org','/view_*.aspx',function(html,$){
-	//$('div.pages a').spider();
+	return el.innerHTML.replace(/<[^>]+?>|\s+/g,'');
+}
+jdSpider.route('www.jd.com', '/allSort.aspx', function (html, $) {
+	$('.category-item').each(function(i,p){
+		
+		// dl dt,.category-item .items dl dd a
+		var groupTitle =  toInnerText($('h2.item-title',p));
+		var group = $('.items dl',p);
+		console.log('groupTitle:',groupTitle)
+		group.each(function(i,p){
+			var rowTitle =  toInnerText($('dt',p));
+			var rowTypes =  $('dd a',p);
+			console.log('\t',rowTitle,'$',rowTypes.map(toInnerText).join(','))
+		})
+		//console.log(p+'$')
+	})
 	//console.log(html)
+}).route('img13.360buyimg.com', '/*.jpg', function (html, $) {
+	console.log('typeof result',typeof html)
+	jdSpider.get('http://www.jd.com/allSort.aspx')
 })
-//
-.log('info').ok(function(){
+.log('debug').ok(function(){
 	console.log('complete task!')
-	//左丘明
-	fs.writeFile('./author.json',JSON.stringify(Object.keys(authorMap)),function(err){err && console.error(err)})
 	mongoCache.close();
 })//.get('http://so.gushiwen.org/view_11228.aspx')
-.get('http://so.gushiwen.org/type.aspx?p=1')
+//.get('http://www.jd.com/allSort.aspx')
+.get('http://img13.360buyimg.com/n3/jfs/t2443/183/1103869869/171925/3884605e/566b87d7N2e5d3a59.jpg')
