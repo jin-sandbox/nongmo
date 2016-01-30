@@ -50,7 +50,7 @@ authorSpider.route('so.gushiwen.org', '/type.aspx\\?p=*', function (html, $) {
 	$('div.pages a').spider();
 	var c = $('.sons a').spider();
 	if(c ==0){
-		console.log('无作品：'+this[0])
+		console.log('无作品：',this.url.href);//,$('.sons a').map(function(e){return e.getAttribute('href')+e}))
 	}
 }).route('so.gushiwen.org','/view_*.aspx',function(html,$){
 	//$('div.pages a').spider();

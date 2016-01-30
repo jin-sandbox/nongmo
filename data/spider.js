@@ -207,21 +207,24 @@ Spider.prototype.route = function (hosts, pattern, cb) {
 				}
 			}
 			list.spider = function(replace){
-				var i = 0;
+				var c = 0;
 				list.each(function(i,p){
 					var href= p.getAttribute('href');
 					if(href){
 						if (!/^https?:/.test(href)) {
 							href = urlResolve(url, href);
 						}
+						
 						if(replace){
-							url = replace(url)
+							href = replace(href)
 						}
-						i++;
+						c++;
 						spider.get(href,url);
+					}else{
+						//console.log('@@',href)
 					}
 				})
-				return i;
+				return c;
 			}
 			return list;
 		}
